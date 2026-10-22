@@ -1,0 +1,651 @@
+<!doctype html>
+<html lang="zh-Hant-HK">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>世譽財富 保費融資計算機</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@600;700&family=Red+Hat+Text:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* Layout: a statement-style tool. Yellow "input cells" (like the Excel) in a sticky left panel; ledger tables and one stacked chart on the right. Stacks to one column on phones. */
+:root{
+  --paper:#f3f6f5; --surface:#ffffff; --ink:#13201d; --muted:#5a6a66; --rule:#dbe3e0; --rule-strong:#b7c5c0;
+  --accent:#0d6b59; --accent-soft:#e0efea; --cell:#fff6cc; --cell-rule:#e2cf7c; --cell-focus:#c9a92c;
+  --neg:#b03f2c; --warn-bg:#fdf1e6; --warn-ink:#8a4b12;
+  --s1:#2c5a6f; --s2:#c98a2c; --s3:#a9b8c9; --s4:#12876b;
+  --font-display:"Red Hat Display","Noto Sans TC","PingFang HK","Microsoft JhengHei",system-ui,sans-serif;
+  --font-body:"Red Hat Text","Noto Sans TC","PingFang HK","Microsoft JhengHei",system-ui,sans-serif;
+  color-scheme:light;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0e1513; --surface:#151e1b; --ink:#e4ece9; --muted:#97a8a3; --rule:#26322e; --rule-strong:#3a4944;
+    --accent:#4fc4a6; --accent-soft:#16302a; --cell:#2b2814; --cell-rule:#5a5224; --cell-focus:#c9a92c;
+    --neg:#f08a74; --warn-bg:#33240f; --warn-ink:#f2c48a;
+    --s1:#6aa3bd; --s2:#e3a54c; --s3:#5d6f85; --s4:#45c29f;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0e1513; --surface:#151e1b; --ink:#e4ece9; --muted:#97a8a3; --rule:#26322e; --rule-strong:#3a4944;
+  --accent:#4fc4a6; --accent-soft:#16302a; --cell:#2b2814; --cell-rule:#5a5224; --cell-focus:#c9a92c;
+  --neg:#f08a74; --warn-bg:#33240f; --warn-ink:#f2c48a;
+  --s1:#6aa3bd; --s2:#e3a54c; --s3:#5d6f85; --s4:#45c29f;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5}
+[hidden]{display:none!important}
+.wrap{max-width:1200px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.num{font-variant-numeric:tabular-nums}
+
+/* Header */
+.mast{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:8px 24px;padding-bottom:14px;border-bottom:2px solid var(--ink)}
+.mast h1{margin:0;font-family:var(--font-display);font-weight:700;font-size:clamp(22px,3.2vw,30px);line-height:1.2;letter-spacing:.01em;text-wrap:balance}
+.mast h1 small{display:block;font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.mast .ver{font-size:12.5px;color:var(--muted);text-align:right}
+.notice{margin:12px 0 20px;font-size:12.5px;color:var(--warn-ink);background:var(--warn-bg);padding:8px 12px;border-radius:6px}
+
+.layout{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:28px;align-items:start}
+@media (max-width:900px){.layout{grid-template-columns:minmax(0,1fr)}}
+
+/* Input panel */
+.panel{position:sticky;top:calc(16px + env(safe-area-inset-top,0px));background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:18px 18px 16px;display:flex;flex-direction:column;gap:18px}
+@media (max-width:900px){.panel{position:static}}
+.panel h2{margin:0;font-family:var(--font-display);font-size:16px;font-weight:700}
+.panel h2 span{font-weight:600;color:var(--muted);font-size:12px;letter-spacing:.06em;text-transform:uppercase;margin-left:6px}
+.group{display:flex;flex-direction:column;gap:10px}
+.group > h3{margin:0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;padding-bottom:6px;border-bottom:1px solid var(--rule)}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:13.5px;font-weight:500}
+.field label em{font-style:normal;color:var(--muted);font-weight:400;font-size:12px;display:block}
+.cellbox{display:flex;align-items:center;background:var(--cell);border:1px solid var(--cell-rule);border-radius:6px;padding:0 10px;min-height:40px}
+.cellbox:focus-within{outline:2px solid var(--cell-focus);outline-offset:1px}
+.cellbox .pre,.cellbox .suf{font-size:12.5px;color:var(--muted);white-space:nowrap}
+.cellbox .pre{margin-right:8px}.cellbox .suf{margin-left:6px}
+.cellbox input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:inherit;font-size:16px;font-weight:600;padding:8px 0;text-align:right;font-variant-numeric:tabular-nums;outline:none}
+.cellbox.bad{border-color:var(--neg);background:transparent}
+.hint{font-size:12px;color:var(--muted)}
+.err{font-size:12px;color:var(--neg)}
+.row2{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:end}
+.row2 .field label{font-size:12.5px}
+.years{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.years .cellbox{padding:0 6px}.years input{text-align:center}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--rule-strong);border-radius:6px;overflow:hidden}
+.seg button{font:inherit;font-size:13px;padding:8px 6px;border:0;background:transparent;color:var(--ink);cursor:pointer}
+.seg button+button{border-left:1px solid var(--rule-strong)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--surface);font-weight:600}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
+.exline{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.exline input{width:64px;font:inherit;font-size:12.5px;padding:3px 6px;border:1px solid var(--cell-rule);background:var(--cell);color:var(--ink);border-radius:4px;text-align:right}
+.reset{align-self:flex-start;font:inherit;font-size:13px;background:transparent;border:1px solid var(--rule-strong);color:var(--ink);border-radius:6px;padding:7px 12px;cursor:pointer}
+.reset:hover{border-color:var(--accent);color:var(--accent)}
+.reset:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Results */
+.results{display:flex;flex-direction:column;gap:30px;min-width:0}
+.keys{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:10px;overflow:hidden}
+@media (max-width:620px){.keys{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.key{background:var(--surface);padding:14px 16px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.key .lab{font-size:12.5px;color:var(--muted)}
+.key .val{font-family:var(--font-display);font-size:clamp(20px,2.6vw,26px);font-weight:700;line-height:1.2;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.key .val small{font-size:13px;font-weight:600;color:var(--muted);margin-left:3px}
+.key .sub{font-size:12px;color:var(--muted)}
+.key.hl .val{color:var(--accent)}
+
+section h2{margin:0 0 4px;font-family:var(--font-display);font-size:19px;font-weight:700;text-wrap:balance}
+section h2 .en{font-weight:600;font-size:13px;color:var(--muted);margin-left:8px;letter-spacing:.02em}
+section .lede{margin:0 0 12px;font-size:13px;color:var(--muted);max-width:70ch}
+
+.ledger{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:4px 18px}
+.ledger dl{margin:0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0}
+.ledger dt,.ledger dd{margin:0;padding:10px 0;border-bottom:1px solid var(--rule)}
+.ledger dt{font-size:14px}
+.ledger dt em{display:block;font-style:normal;font-size:12px;color:var(--muted)}
+.ledger dd{text-align:right;font-weight:600;font-variant-numeric:tabular-nums;padding-left:16px;align-self:stretch;display:flex;align-items:center;justify-content:flex-end}
+.ledger dt:nth-last-of-type(1),.ledger dd:last-of-type{border-bottom:0}
+.ledger dd.total{color:var(--accent)}
+.ledger .op{color:var(--muted);font-weight:400;margin-right:6px}
+.ratebox{text-align:right;font-weight:600;line-height:1.45}
+
+.tablebox{background:var(--surface);border:1px solid var(--rule);border-radius:10px;overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:14px}
+th,td{padding:9px 14px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--rule)}
+th:first-child,td:first-child{text-align:left;white-space:normal;min-width:140px}
+thead th{font-size:12.5px;font-weight:600;color:var(--muted);background:var(--paper);vertical-align:bottom;white-space:normal;line-height:1.35}
+thead th .en{display:block;font-weight:400;font-size:11px}
+tbody tr:last-child td{border-bottom:0}
+td.neg{color:var(--neg)}
+td.blank{color:var(--rule-strong)}
+tr.sum td{font-weight:700;border-top:2px solid var(--ink)}
+tr.irr td{font-weight:700;color:var(--accent)}
+tr.minor td{color:var(--muted)}
+th.yr{color:var(--ink);font-family:var(--font-display);font-size:14px}
+td .en{display:block;font-size:11.5px;color:var(--muted)}
+.foot{font-size:12px;color:var(--muted);margin:8px 2px 0}
+
+.chartbox{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:14px 14px 8px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;margin:0 0 6px 4px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:11px;height:11px;border-radius:2px;display:inline-block}
+.chartbox svg{display:block;width:100%;height:auto;max-width:100%}
+.chartbox svg text{fill:var(--muted);font-family:var(--font-body);font-size:12px}
+.chartbox svg .tot{fill:var(--ink);font-weight:600}
+.chartbox svg .xl{fill:var(--ink);font-weight:600}
+
+details.yby summary{cursor:pointer;font-family:var(--font-display);font-size:19px;font-weight:700;list-style:none;display:flex;align-items:center;gap:8px}
+details.yby summary::-webkit-details-marker{display:none}
+details.yby summary::before{content:"";width:8px;height:8px;border-right:2px solid var(--ink);border-bottom:2px solid var(--ink);transform:rotate(-45deg);transition:transform .15s}
+details.yby[open] summary::before{transform:rotate(45deg)}
+details.yby summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+details.yby summary .en{font-family:var(--font-body);font-weight:600;font-size:13px;color:var(--muted)}
+details.yby .lede{margin-top:6px}
+tr.be td{background:var(--accent-soft)}
+tr.sel td:first-child{font-weight:700}
+.tag{display:inline-block;font-size:11px;font-weight:600;padding:1px 6px;border-radius:999px;background:var(--accent);color:var(--surface);margin-left:6px;vertical-align:1px}
+
+.notes{font-size:13px;color:var(--muted);border-top:1px solid var(--rule);padding-top:16px}
+.notes h2{font-size:15px;color:var(--ink)}
+.notes ol{margin:6px 0 10px;padding-left:20px;max-width:80ch}
+.notes li{margin:3px 0}
+.notes details summary{cursor:pointer;color:var(--ink);font-weight:500}
+th:first-child,td:first-child{position:sticky;left:0;z-index:1;background:var(--surface)}
+thead th:first-child{background:var(--paper)}
+tr.be td:first-child{background:var(--accent-soft)}
+@media (max-width:620px){
+  .mast .ver{text-align:left}
+  section h2 .en{display:block;margin-left:0}
+  table{font-size:13px}
+  th,td{padding:8px 7px}
+  th:first-child,td:first-child{min-width:82px;padding-left:10px}
+  thead th .en{display:none}
+  td .en{font-size:10.5px}
+  .ledger{padding:2px 14px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="mast">
+    <h1><small>Premium Financing Estimation</small>世譽財富 Prime Eternity 保費融資估算</h1>
+    <div class="ver">網頁版 · 按 Excel 版本 202605 公式重建<br>金額單位：美元 USD</div>
+  </header>
+  <p class="notice">僅供內部培訓及參考之用，不可依靠此工具的資料進行任何交易，亦不可以任何途徑分享或轉發。For internal training and reference only.</p>
+
+  <div class="layout">
+    <form class="panel" id="form" autocomplete="off" novalidate>
+      <h2>輸入 <span>Input</span></h2>
+
+      <div class="group">
+        <h3>保單資料 Policy</h3>
+        <div class="field">
+          <label for="na">整付保費（保費折扣前）<em>Single premium before discount</em></label>
+          <div class="cellbox"><span class="pre">USD</span><input id="na" inputmode="decimal" type="text" value="100,000"></div>
+          <div class="exline num"><span id="hkdEq">≈ HKD 780,000</span><span>· 1 USD =</span><input id="ex" type="number" step="0.01" min="0.01" value="7.8" aria-label="匯率 HKD per USD"><span>HKD</span></div>
+          <div class="err" id="naErr" hidden></div>
+        </div>
+        <div class="field">
+          <label for="disc">保費折扣 <em>Premium discount — 請參閱最新優惠</em></label>
+          <div class="cellbox"><input id="disc" type="number" step="0.1" min="0" max="100" value="10"><span class="suf">%</span></div>
+        </div>
+      </div>
+
+      <div class="group">
+        <h3>貸款資料 Loan</h3>
+        <div class="field">
+          <label for="ltv">貸款比率（首日退保價值之百分比）<em>Loan ratio, % of Day 1 surrender value</em></label>
+          <div class="cellbox"><input id="ltv" type="number" step="1" min="0" max="100" value="90"><span class="suf">%</span></div>
+          <div class="hint">請確保不超出銀行之最高貸款額</div>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label for="intro">首 X 年</label>
+            <div class="cellbox"><input id="intro" type="number" step="1" min="0" max="100" value="10"><span class="suf">年</span></div>
+          </div>
+          <div class="field">
+            <label for="r1">首X年年利率</label>
+            <div class="cellbox"><input id="r1" type="number" step="0.05" min="0" value="3.8"><span class="suf">%</span></div>
+          </div>
+          <div class="field">
+            <label for="r2">其後年利率</label>
+            <div class="cellbox"><input id="r2" type="number" step="0.05" min="0" value="3.3"><span class="suf">%</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <h3>其他費用 Fees</h3>
+        <div class="field">
+          <label id="feeModeLab">成立費（一次性）<em>Setup fee, one-off</em></label>
+          <div class="seg" role="group" aria-labelledby="feeModeLab">
+            <button type="button" id="modePct" aria-pressed="true">貸款額之 %</button>
+            <button type="button" id="modeFix" aria-pressed="false">固定金額 USD</button>
+          </div>
+          <div class="cellbox" id="setupPctBox"><input id="setupPct" type="number" step="0.05" min="0" value="1" aria-label="成立費 % of loan"><span class="suf">% of loan</span></div>
+          <div class="cellbox" id="setupFixBox" hidden><span class="pre">USD</span><input id="setupFixed" type="number" step="100" min="0" value="0" aria-label="成立費 固定金額"></div>
+          <div class="hint" id="setupHint" hidden>貸款比率為 0 時，成立費不計算。</div>
+        </div>
+        <div class="field">
+          <label for="annual">年費 <em>Annual fee, % of loan amount</em></label>
+          <div class="cellbox"><input id="annual" type="number" step="0.05" min="0" value="1"><span class="suf">%</span></div>
+        </div>
+      </div>
+
+      <div class="group">
+        <h3>顯示保單年度 Years to show</h3>
+        <div class="years">
+          <div class="cellbox"><input id="y0" type="number" min="1" max="30" step="1" value="12" aria-label="年度 1"></div>
+          <div class="cellbox"><input id="y1" type="number" min="1" max="30" step="1" value="13" aria-label="年度 2"></div>
+          <div class="cellbox"><input id="y2" type="number" min="1" max="30" step="1" value="14" aria-label="年度 3"></div>
+          <div class="cellbox"><input id="y3" type="number" min="1" max="30" step="1" value="15" aria-label="年度 4"></div>
+        </div>
+        <div class="hint">輸入 1 至 30（原 Excel 限 15 年內）</div>
+        <div class="err" id="yErr" hidden></div>
+      </div>
+
+      <button type="button" class="reset" id="reset">還原預設值</button>
+    </form>
+
+    <main class="results" id="results">
+      <div class="keys">
+        <div class="key"><span class="lab">實際已繳保費（客戶自付）</span><span class="val num" id="kPaid">–</span><span class="sub">Actual premium paid</span></div>
+        <div class="key"><span class="lab">融資槓桿倍數</span><span class="val num" id="kLev">–</span><span class="sub">總保費 ÷ 自付</span></div>
+        <div class="key"><span class="lab">預期回本期</span><span class="val num" id="kBE">–</span><span class="sub">Break-even year</span></div>
+        <div class="key hl"><span class="lab" id="kIrrLab">扣除融資成本後 IRR</span><span class="val num" id="kIrr">–</span><span class="sub" id="kIrrSub">不融資：–</span></div>
+      </div>
+
+      <section>
+        <h2>概覽<span class="en">Summary</span></h2>
+        <div class="ledger">
+          <dl class="num">
+            <dt>保單總保費<em>Total premium of the policy</em></dt><dd id="sTot">–</dd>
+            <dt>保費折扣<em>Premium discount</em></dt><dd id="sDisc">–</dd>
+            <dt>首日退保價值<em>Day 1 surrender value (85% of premium)</em></dt><dd id="sSV">–</dd>
+            <dt>貸款金額<em>Loan amount</em></dt><dd id="sLoan">–</dd>
+            <dt>實際已繳保費（客戶自付）<em>Actual premium to be paid</em></dt><dd id="sPaid" class="total">–</dd>
+            <dt>實際貸款利率<em>Loan interest rate</em></dt><dd><div class="ratebox" id="sRate">–</div></dd>
+          </dl>
+        </div>
+      </section>
+
+      <section>
+        <h2>非保費融資<span class="en">Without premium financing</span></h2>
+        <p class="lede">保單年度完結時的退保價值及每年回報率（含保費折扣）。</p>
+        <div class="tablebox"><table id="tNoPF"></table></div>
+      </section>
+
+      <section>
+        <h2>保費融資估算現金流<span class="en">With premium financing · cash flow</span></h2>
+        <p class="lede">每欄假設於該保單年度完結時退保並償還貸款。負數為客戶支出（利息及年費於每年年初支付）。</p>
+        <div class="tablebox"><table id="tCF"></table></div>
+        <p class="foot">* 首日支付包括實際需繳付的保費、首年貸款利息、成立費及首年年費。</p>
+      </section>
+
+      <section>
+        <h2>預期現金價值分項<span class="en">Total cash value breakdown</span></h2>
+        <p class="lede">保單年度完結時，償還貸款前的預期退保價值 = 實際已繳保費 + 貸款總支出 + 貸款額 + 淨收益。</p>
+        <div class="chartbox">
+          <div class="legend" id="legend"></div>
+          <svg id="chart" viewBox="0 0 720 300" role="img" aria-label="預期現金價值分項棒形圖"></svg>
+        </div>
+        <div class="tablebox" style="margin-top:12px"><table id="tBreak"></table></div>
+      </section>
+
+      <section>
+        <details class="yby" id="yby">
+          <summary>逐年明細 <span class="en">Year by year, 1–30</span></summary>
+          <p class="lede">回本比率 = 還款後退保價值 ÷（客戶自付 + 累計利息及費用）。首次超過 100% 的年度即預期回本期。</p>
+          <div class="tablebox"><table id="tYear"></table></div>
+        </details>
+      </section>
+
+      <section class="notes">
+        <h2>重要事項</h2>
+        <ol>
+          <li>僅供內部培訓用途，不得用作面向客戶之資料。</li>
+          <li>所示數字僅供參考，未必與實際金額相同；最終數值須以融資銀行的最終批核／最終方案為準。</li>
+          <li>所採用之匯率及貸款利率僅供參考，並不代表最終安排／結算所適用之實際匯率及利率。</li>
+          <li>非保證紅利乃根據現行紅利率及當前投資回報作出的預計（沿用原工具內 2025 年 4 月之終期紅利率）。所有數字僅供說明用途，並非未來表現之指標。實際回報可高於或低於所示數值。</li>
+          <li>就香港地區，所顯示的保費並未包括香港保險業監管局徵收的保費徵費。保費徵費不適用於澳門地區。</li>
+          <li>請細閱原 Excel「重要事項及免責聲明」工作紙下的相關事項及聲明。</li>
+        </ol>
+        <details>
+          <summary>Important notes (English)</summary>
+          <ol>
+            <li>For internal training purpose only and not for customer-facing use.</li>
+            <li>Figures shown are for reference only and may not be the same as the actual amounts. Final values subject to the financing bank's final offer.</li>
+            <li>Exchange rate and loan interest rate used are for reference only and do not represent the actual exchange rate and interest rate of the final arrangement / settlement.</li>
+            <li>The non-guaranteed bonuses are estimated based on the current bonus scale in light of the current investment return. All figures are for illustration only and are not an indicator of future performance. Actual returns may be higher or lower.</li>
+            <li>For Hong Kong, the displayed premium does not include the levy collected by the Insurance Authority. Levy is not applicable for Macau.</li>
+            <li>Please read the important notes and disclaimer in the original Excel's T&amp;C worksheet.</li>
+          </ol>
+        </details>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script>
+const GCV_F=[0.85,0.85,0.85,0.85,0.85,0.85,0.9,0.9500000000000001,1,1.0030000000000001,1.006,1.013,1.019,1.026,1.032,1.039,1.045,1.052,1.058,1.064,1.071,1.077,1.084,1.09,1.097,1.103,1.11,1.116,1.122,1.129,1.135,1.142,1.148,1.155,1.161,1.168,1.174,1.18,1.187,1.193,1.2,1.206,1.213,1.219,1.226,1.232,1.238,1.245,1.251,1.258,1.264,1.271,1.277,1.284,1.29,1.296,1.303,1.309,1.316,1.322,1.329,1.335,1.342,1.348,1.354,1.361,1.367,1.374,1.38,1.387,1.393,1.4,1.406,1.412,1.419,1.425,1.432,1.438,1.445,1.451,1.458,1.464,1.47,1.477,1.483,1.49,1.496,1.503,1.509,1.516,1.522,1.528,1.535,1.541,1.548,1.554,1.561,1.567,1.574,1.58];
+const TD_F=[0,0,0.0453,0.16820000000000002,0.2724,0.3494,0.3901,0.4542,0.539,0.6568,0.7813,0.9139,1.0567,1.2083,1.3705,1.5429,1.7294,1.9304,2.1471,2.3793,2.6277,2.8929,3.1722,3.4429000000000003,3.7305,4.0383,4.3655,4.7155000000000005,5.0885,5.4852,5.9091,6.36,6.8416999999999994,7.354,7.9011000000000005,8.4832,9.1045,9.7666,10.4711,11.2229,12.023,12.8765,13.7848,14.753699999999998,15.7849,16.8847,18.0563,19.3034,20.6331,22.0485,23.5575,25.163899999999998,26.8761,28.699099999999998,30.642,32.7116,34.9151,37.2633,39.7635,42.4277,45.264399999999995,48.287,51.505500000000005,54.9345,58.58689999999999,62.476099999999995,66.6195,71.0316,75.732,80.73729999999999,86.0694,91.7475,97.79610000000001,104.23819999999999,111.0985,118.40610000000001,126.1882,134.4775,143.305,152.70780000000002,162.7211,173.3867,184.74599999999998,196.84310000000002,209.7279,223.4496,238.06470000000002,253.62919999999997,270.2068,287.8613,306.6648,326.691,348.0182,370.7332,394.92400000000004,420.68870000000004,448.1275,477.3513,508.474,541.6211];
+
+// Excel ROUND(x,0): half away from zero, on 15 significant digits
+function xlRound0(x){ const v = Number(x.toPrecision(15)); return Math.sign(v)*Math.round(Math.abs(v)); }
+
+// Excel-like IRR: Newton from guess, bisection fallback. Returns NaN if no root.
+function irr(cfs, guess){
+  const vals = cfs.filter(v => typeof v === 'number' && isFinite(v));
+  if (!vals.some(v=>v>0) || !vals.some(v=>v<0)) return NaN;
+  const npv = r => { let s=0, d=1; for (let i=0;i<vals.length;i++){ s += vals[i]/d; d *= (1+r);} return s; };
+  const dnpv = r => { let s=0; for (let i=1;i<vals.length;i++){ s -= i*vals[i]/Math.pow(1+r,i+1);} return s; };
+  let r = (guess==null?0.1:guess);
+  for (let k=0;k<100;k++){
+    const f=npv(r), df=dnpv(r);
+    if (!isFinite(f)||!isFinite(df)||df===0) break;
+    const nr = r - f/df;
+    if (!isFinite(nr) || nr<=-1) break;
+    if (Math.abs(nr-r) < 1e-12*Math.max(1,Math.abs(r))) return nr;
+    r = nr;
+  }
+  // bisection fallback over (-0.9999, 100)
+  let lo=-0.9999, hi=1, flo=npv(lo), fhi=npv(hi);
+  while (flo*fhi>0 && hi<1e4){ hi*=2; fhi=npv(hi); }
+  if (flo*fhi>0) return NaN;
+  for (let k=0;k<300;k++){
+    const mid=(lo+hi)/2, fm=npv(mid);
+    if (fm===0) return mid;
+    if (flo*fm<0){ hi=mid; fhi=fm; } else { lo=mid; flo=fm; }
+    if (hi-lo<1e-15) break;
+  }
+  return (lo+hi)/2;
+}
+
+const YEARS = 100;
+const DAY1_SV = 0.85;
+
+/* inputs: na, disc, ltv, introYears, rate1, rate2, feeMode('pct'|'fixed'), setupPct, setupFixed, annualPct, exRate, years[] */
+function computeAll(inp){
+  const ex = inp.exRate, NA = inp.na;
+  const prem = NA*(1-inp.disc);                 // CF!C
+  const G = NA*DAY1_SV*inp.ltv*ex;              // loan HKD
+  const pct = inp.feeMode === 'pct';
+  const I = inp.ltv===0 ? 0 : (G*(pct?inp.setupPct:0) + (pct?0:inp.setupFixed)*ex);
+  const rows = [];
+  let Hprev=0, Jprev=0, Sprev=0;
+  const Pseq=[], AHseq=[];
+  for (let t=1;t<=YEARS;t++){
+    const gcvU = NA*GCV_F[t-1], tdU = NA*TD_F[t-1];
+    const tsv = xlRound0(gcvU) + xlRound0(tdU);   // CF!D
+    const E = prem*ex, F = tsv*ex;
+    const rate = (t <= (inp.introYears||0)) ? inp.rate1 : inp.rate2;
+    const mIR = Math.pow(1+rate,1/12)-1;
+    const H = (t===1?0:Hprev) + G*mIR*12;
+    const J = (t===1?0:Jprev) + G*inp.annualPct;
+    const K = E - G;
+    const S = H + I + J;
+    let P;
+    if (t===1){ const N=-K, O=-(H+I+J); P = N+O; }
+    else { P = -(S - Sprev); }
+    const Q = F - G;
+    Pseq.push(P);
+    const R = irr(Pseq.concat([Q]), 0.05);
+    const denom = K+H+I+J;
+    const T = denom===0 ? NaN : (F-G)/denom;
+    const W = gcvU*ex;
+    AHseq.push(t===1 ? -E : 0);
+    const AJ = irr(AHseq.concat([F]), 0.05);
+    const AK = irr(AHseq.concat([W]), 0.05);
+    rows.push({t, rate, E, F, G, H, I, J, K, P, Q, R, T, W, AJ, AK, tsvUSD: tsv, gcvUSD: gcvU});
+    Hprev=H; Jprev=J; Sprev=S;
+  }
+  // Summary
+  const D30=NA, D31=D30*inp.disc, D32=DAY1_SV*NA, D33=D32*inp.ltv, D34=D30-D31-D33, D35=D30/D34;
+  let be = null;
+  for (const r of rows){ if (r.T>1){ be=r.t; break; } }
+  const cols = inp.years.map(y=>{
+    const r = rows[y-1];
+    const noPF = { gcv: r.W/ex, girr: r.AK, tcv: r.F/ex, irr: r.AJ };
+    const maxY = Math.max(...inp.years);
+    const cf = [rows[0].P/ex];
+    for (let k=1;k<=maxY;k++){
+      if (k<y) cf.push(rows[k].P/ex);
+      else if (k===y) cf.push(r.Q/ex);
+      else cf.push(null);
+    }
+    const net = cf.reduce((a,b)=>a+(b==null?0:b),0);
+    const cfIrr = irr(cf.filter(v=>v!=null), 0.05);
+    const tbl = { prem: r.K/ex, exp: (r.H + r.I + r.J)/ex, loan: r.G/ex };
+    tbl.net = r.Q/ex - (tbl.prem+tbl.exp);
+    tbl.tcv = r.F/ex; tbl.irr = r.R; tbl.irrNoPF = r.AJ;
+    return { year:y, noPF, cf, net, cfIrr, irrNoPF: r.AJ, tbl };
+  });
+  return { rows, summary:{D30,D31,D32,D33,D34,D35,breakEven:be}, cols };
+}
+
+(function(){
+  const $ = id => document.getElementById(id);
+  const STORE = 'prime-eternity-pf-v1';
+  const DEFAULTS = {na:'100,000', ex:'7.8', disc:'10', ltv:'90', intro:'10', r1:'3.8', r2:'3.3', feeMode:'pct', setupPct:'1', setupFixed:'0', annual:'1', y0:'12', y1:'13', y2:'14', y3:'15'};
+  const FIELDS = ['na','ex','disc','ltv','intro','r1','r2','setupPct','setupFixed','annual','y0','y1','y2','y3'];
+  let feeMode = 'pct';
+
+  const nf0 = new Intl.NumberFormat('en-US',{maximumFractionDigits:0});
+  const nf2 = new Intl.NumberFormat('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const money = v => { if (v==null || !isFinite(v)) return '–'; const s = nf0.format(v); return s==='-0' ? '0' : s.replace('-','−'); };
+  const pct = v => (v==null || !isFinite(v)) ? '–' : (v*100).toFixed(2).replace('-','−') + '%';
+  const pctIn = s => Number(String(s).trim() + 'e-2');        // "3.8" -> 0.038 exactly
+  const parseMoney = s => Number(String(s).replace(/[,\s]/g,''));
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  function setMode(m){
+    feeMode = m;
+    $('modePct').setAttribute('aria-pressed', m==='pct');
+    $('modeFix').setAttribute('aria-pressed', m!=='pct');
+    $('setupPctBox').hidden = m!=='pct';
+    $('setupFixBox').hidden = m==='pct';
+  }
+
+  function load(){
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(STORE) || 'null'); } catch(e) {}
+    const st = Object.assign({}, DEFAULTS, saved || {});
+    FIELDS.forEach(k => { if (st[k]!=null) $(k).value = st[k]; });
+    setMode(st.feeMode === 'fixed' ? 'fixed' : 'pct');
+  }
+  function save(){
+    const st = {feeMode};
+    FIELDS.forEach(k => st[k] = $(k).value);
+    try { localStorage.setItem(STORE, JSON.stringify(st)); } catch(e) {}
+  }
+
+  function readInputs(){
+    const errs = {};
+    const na = parseMoney($('na').value);
+    const ex = Number($('ex').value);
+    const disc = pctIn($('disc').value), ltv = pctIn($('ltv').value);
+    const intro = Number($('intro').value || 0);
+    const r1 = pctIn($('r1').value), r2 = pctIn($('r2').value);
+    const setupPct = pctIn($('setupPct').value || 0), setupFixed = Number($('setupFixed').value || 0);
+    const annual = pctIn($('annual').value || 0);
+    const years = ['y0','y1','y2','y3'].map(k => Number($(k).value));
+    const bad = new Set();
+    if (!(na>0)) { bad.add('na'); errs.na = '請輸入大於 0 的保費金額。'; }
+    else if (na < 10000) errs.naWarn = '產品最低保費為 USD 10,000。';
+    if (!(ex>0)) bad.add('ex');
+    if (!(disc>=0 && disc<1)) bad.add('disc');
+    if (!(ltv>=0 && ltv<=1)) bad.add('ltv');
+    if (!(intro>=0) || !Number.isInteger(intro)) bad.add('intro');
+    if (!(r1>=0)) bad.add('r1');
+    if (!(r2>=0)) bad.add('r2');
+    if (!(setupPct>=0)) bad.add('setupPct');
+    if (!(setupFixed>=0)) bad.add('setupFixed');
+    if (!(annual>=0)) bad.add('annual');
+    years.forEach((y,i) => { if (!(Number.isInteger(y) && y>=1 && y<=30)) { bad.add('y'+i); errs.y = '保單年度須為 1 至 30 的整數。'; } });
+    FIELDS.forEach(k => $(k).closest('.cellbox') && $(k).closest('.cellbox').classList.toggle('bad', bad.has(k)));
+    $('ex').style.borderColor = bad.has('ex') ? 'var(--neg)' : '';
+    $('naErr').hidden = !(errs.na || errs.naWarn); $('naErr').textContent = errs.na || errs.naWarn || '';
+    $('yErr').hidden = !errs.y; $('yErr').textContent = errs.y || '';
+    $('setupHint').hidden = !(ltv===0);
+    if (bad.size) return null;
+    return {na, disc, ltv, introYears:intro, rate1:r1, rate2:r2, feeMode, setupPct, setupFixed, annualPct:annual, exRate:ex, years};
+  }
+
+  function cell(v, kind){
+    if (v===null || v===undefined) return '<td class="blank"></td>';
+    const txt = kind==='pct' ? pct(v) : money(v);
+    return '<td'+(v<0 && isFinite(v) ? ' class="neg"' : '')+'>'+txt+'</td>';
+  }
+  function yrHead(cols, firstLabel){
+    return '<thead><tr><th>'+firstLabel+'</th>'+cols.map(c => '<th class="yr">第 '+c.year+' 年<span class="en">End of year '+c.year+'</span></th>').join('')+'</tr></thead>';
+  }
+
+  function render(){
+    const inp = readInputs();
+    if (!inp) return;
+    save();
+    const ex = inp.exRate;
+    $('hkdEq').textContent = '≈ HKD ' + money(inp.na*ex);
+    const R = computeAll(inp);
+    const s = R.summary, cols = R.cols;
+
+    // key figures
+    $('kPaid').innerHTML = '<small>USD</small>' + money(s.D34);
+    $('kLev').innerHTML = (isFinite(s.D35) && s.D34>0) ? nf2.format(s.D35) + '<small>倍</small>' : '–';
+    $('kBE').innerHTML = s.breakEven ? s.breakEven + '<small>年</small>' : '<small>100 年內未能回本</small>';
+    const last = cols.reduce((a,c) => c.year > a.year ? c : a, cols[0]);
+    $('kIrrLab').textContent = '第 ' + last.year + ' 年 IRR（扣除融資成本）';
+    $('kIrr').textContent = pct(last.tbl.irr);
+    $('kIrrSub').textContent = '不融資：' + pct(last.irrNoPF);
+
+    // summary ledger
+    $('sTot').textContent = money(s.D30);
+    $('sDisc').innerHTML = '<span class="op">−</span>' + money(s.D31);
+    $('sSV').textContent = money(s.D32);
+    $('sLoan').innerHTML = '<span class="op">−</span>' + money(s.D33);
+    $('sPaid').textContent = money(s.D34);
+    const iy = inp.introYears;
+    $('sRate').innerHTML = esc('首' + iy + '年年利率：' + (inp.rate1*100).toFixed(2) + '%') + '<br>' + esc('其後年利率：' + (inp.rate2*100).toFixed(2) + '%');
+
+    // without PF
+    $('tNoPF').innerHTML = yrHead(cols, '保單年度完結') + '<tbody>' +
+      '<tr><td>保證退保價值<span class="en">Guaranteed cash value</span></td>' + cols.map(c => cell(c.noPF.gcv)).join('') + '</tr>' +
+      '<tr><td>保證每年回報率<span class="en">Guaranteed IRR</span></td>' + cols.map(c => cell(c.noPF.girr,'pct')).join('') + '</tr>' +
+      '<tr><td>預期退保價值<span class="en">Total cash value</span></td>' + cols.map(c => cell(c.noPF.tcv)).join('') + '</tr>' +
+      '<tr><td>預期每年回報率<span class="en">Total IRR</span></td>' + cols.map(c => cell(c.noPF.irr,'pct')).join('') + '</tr>' +
+      '</tbody>';
+
+    // cash flow
+    const maxY = Math.max(...inp.years);
+    let cf = yrHead(cols, '保單年度') + '<tbody>';
+    cf += '<tr><td>首日支付*<span class="en">Inception date payment</span></td>' + cols.map(c => cell(c.cf[0])).join('') + '</tr>';
+    for (let k=1;k<=maxY;k++){
+      cf += '<tr><td>第 ' + k + ' 年完結</td>' + cols.map(c => cell(c.cf[k])).join('') + '</tr>';
+    }
+    cf += '<tr class="sum"><td>扣除所有成本後淨利潤<span class="en">Net gain</span></td>' + cols.map(c => cell(c.net)).join('') + '</tr>';
+    cf += '<tr class="irr"><td>扣除融資成本後預期每年回報率<span class="en">IRR with financing</span></td>' + cols.map(c => cell(c.cfIrr,'pct')).join('') + '</tr>';
+    cf += '<tr class="minor"><td>非保費融資預期每年回報率<span class="en">IRR without financing</span></td>' + cols.map(c => cell(c.irrNoPF,'pct')).join('') + '</tr>';
+    $('tCF').innerHTML = cf + '</tbody>';
+
+    // breakdown table
+    const rowsDef = [
+      ['實際已繳保費','Actual premium paid','prem'],
+      ['貸款總支出','Total loan expense','exp'],
+      ['貸款額','Loan amount','loan'],
+      ['淨收益','Net gain','net'],
+      ['償還貸款前的預期退保價值','TCV before repaying loan','tcv'],
+    ];
+    let bt = yrHead(cols, '美元 USD') + '<tbody>';
+    rowsDef.forEach((d,i) => {
+      bt += '<tr'+(i===4?' class="sum"':'')+'><td>' + (i<4 ? '<i style="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;background:var(--s'+(i+1)+')"></i>' : '') + d[0] + '<span class="en">' + d[1] + '</span></td>' + cols.map(c => cell(c.tbl[d[2]])).join('') + '</tr>';
+    });
+    bt += '<tr class="irr"><td>扣除融資成本後 IRR<span class="en">IRR with financing</span></td>' + cols.map(c => cell(c.tbl.irr,'pct')).join('') + '</tr>';
+    bt += '<tr class="minor"><td>如未採用保費融資的 IRR<span class="en">IRR without financing</span></td>' + cols.map(c => cell(c.tbl.irrNoPF,'pct')).join('') + '</tr>';
+    $('tBreak').innerHTML = bt + '</tbody>';
+
+    drawChart(cols);
+
+    // year by year
+    const sel = new Set(inp.years);
+    let yt = '<thead><tr><th>保單年度</th><th>年利率</th><th>預期退保價值<span class="en">TCV</span></th><th>累計利息及費用<span class="en">Loan expense</span></th><th>還款後價值<span class="en">TCV − loan</span></th><th>淨收益<span class="en">Net gain</span></th><th>回本比率<span class="en">Return %</span></th><th>IRR 含融資</th><th>IRR 不融資</th></tr></thead><tbody>';
+    for (let t=1;t<=30;t++){
+      const r = R.rows[t-1];
+      const expense = (r.H + r.I + r.J)/ex, net = r.Q/ex - (r.K/ex + expense);
+      const cls = [t===s.breakEven?'be':'', sel.has(t)?'sel':''].filter(Boolean).join(' ');
+      yt += '<tr'+(cls?' class="'+cls+'"':'')+'><td>第 '+t+' 年'+(t===s.breakEven?'<span class="tag">回本</span>':'')+'</td>' +
+        '<td>'+(r.rate*100).toFixed(2)+'%</td>' + cell(r.F/ex) + cell(expense) + cell(r.Q/ex) + cell(net) +
+        '<td>'+(isFinite(r.T) ? (r.T*100).toFixed(1)+'%' : '–')+'</td>' + cell(r.R,'pct') + cell(r.AJ,'pct') + '</tr>';
+    }
+    $('tYear').innerHTML = yt + '</tbody>';
+  }
+
+  function niceStep(raw){
+    const p = Math.pow(10, Math.floor(Math.log10(raw)));
+    const m = raw/p;
+    return (m<=1?1:m<=2?2:m<=2.5?2.5:m<=5?5:10)*p;
+  }
+  function short(v){
+    const a = Math.abs(v);
+    if (a>=1e6) return (v/1e6).toFixed(a>=1e7?0:1).replace(/\.0$/,'')+'M';
+    if (a>=1e3) return Math.round(v/1e3)+'K';
+    return String(Math.round(v));
+  }
+  function drawChart(cols){
+    const keys = ['prem','exp','loan','net'];
+    const names = ['實際已繳保費','貸款總支出','貸款額','淨收益'];
+    $('legend').innerHTML = names.map((n,i) => '<span><i style="background:var(--s'+(i+1)+')"></i>'+n+'</span>').join('');
+    const W=720, H=300, L=56, Rm=12, T=26, B=34;
+    let maxV = 0, minV = 0;
+    cols.forEach(c => {
+      let pos = 0, neg = 0;
+      keys.forEach(k => { const v=c.tbl[k]; if (v>=0) pos+=v; else neg+=v; });
+      maxV = Math.max(maxV, pos); minV = Math.min(minV, neg);
+    });
+    if (maxV<=0) maxV = 1;
+    const step = niceStep((maxV - minV)/5);
+    const top = Math.ceil(maxV/step)*step, bot = Math.floor(minV/step)*step;
+    const y = v => T + (top - v)/(top - bot)*(H - T - B);
+    let svg = '';
+    for (let v=bot; v<=top+step/2; v+=step){
+      const yy = y(v).toFixed(1);
+      svg += '<line x1="'+L+'" x2="'+(W-Rm)+'" y1="'+yy+'" y2="'+yy+'" stroke="var(--rule)" stroke-width="1"'+(Math.abs(v)<1e-9?' style="stroke:var(--rule-strong)"':'')+'/>';
+      svg += '<text x="'+(L-8)+'" y="'+(+yy+4)+'" text-anchor="end">'+short(v)+'</text>';
+    }
+    const n = cols.length, band = (W-L-Rm)/n, bw = Math.min(88, band*0.5);
+    cols.forEach((c,i) => {
+      const cx = L + band*i + band/2, x = (cx - bw/2).toFixed(1);
+      let pos = 0, neg = 0;
+      keys.forEach((k,j) => {
+        const v = c.tbl[k]; if (!isFinite(v) || v===0) return;
+        let y0, y1;
+        if (v>0){ y0 = y(pos+v); y1 = y(pos); pos += v; } else { y0 = y(neg); y1 = y(neg+v); neg += v; }
+        svg += '<rect x="'+x+'" y="'+y0.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(0,(y1-y0)).toFixed(1)+'" fill="var(--s'+(j+1)+')"><title>'+names[j]+'：USD '+money(v)+'</title></rect>';
+      });
+      svg += '<text class="tot" x="'+cx.toFixed(1)+'" y="'+(y(pos)-7).toFixed(1)+'" text-anchor="middle">'+money(c.tbl.tcv)+'</text>';
+      svg += '<text class="xl" x="'+cx.toFixed(1)+'" y="'+(H-10)+'" text-anchor="middle">第 '+c.year+' 年</text>';
+    });
+    $('chart').innerHTML = svg;
+  }
+
+  // events
+  $('form').addEventListener('input', render);
+  $('form').addEventListener('submit', e => e.preventDefault());
+  $('na').addEventListener('blur', () => { const v = parseMoney($('na').value); if (v>0) { $('na').value = v.toLocaleString('en-US',{maximumFractionDigits:2}); save(); } });
+  $('modePct').addEventListener('click', () => { setMode('pct'); render(); });
+  $('modeFix').addEventListener('click', () => { setMode('fixed'); render(); });
+  $('reset').addEventListener('click', () => {
+    FIELDS.forEach(k => $(k).value = DEFAULTS[k]); setMode('pct');
+    try { localStorage.removeItem(STORE); } catch(e) {}
+    render();
+  });
+
+  load();
+  render();
+})();
+</script>
+</body>
+</html>
